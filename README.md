@@ -10,6 +10,7 @@ This sample code uses [bleak](https://pypi.org/project/bleak/).
 ```
 pip install bleak
 git clone https://github.com/kaz399/py_toio_cube.git
+cd py_toio_cube
 python search_cube.py
 ```
 
