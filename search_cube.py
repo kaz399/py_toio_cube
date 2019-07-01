@@ -1,3 +1,16 @@
+#!/usr/bin/env python3
+
+# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+# AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+# IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+# DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
+# FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+# DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+# SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+# CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+# OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+# OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
 import sys
 import asyncio
 from bleak import discover
@@ -31,15 +44,16 @@ async def motor(cube):
     await cube.write_gatt_char(TOIO_MOTOR_UUID, motor)
 
 async def search_cube(loop):
-    devices = await discover(timeout=1.0)
+    devices = await discover(timeout=2.0)
     for d in devices:
         try:
             async with BleakClient(d.address, loop=loop) as client:
                 services = await client.get_services()
+                connected = await client.is_connected()
                 cube = services.services.get(TOIO_SERVICE_UUID)
                 if cube is not None:
                     cubes.append(client)
-                    print('toio core cube(%d): ' % len(cubes))
+                    print('toio core cube(%d): %s' % (len(cubes), connected))
                     print('  Address: ', d.address)
                     for service in services:
                         print('  Service: ', service)
