@@ -19,7 +19,7 @@ python search_cube.py
 
 **Don't replace** the bluetooth driver to WinUSB.  
 [bleak](https://pypi.org/project/bleak/) uses .NET backend on Windows.  
-If you had replaced the bluetooth driver to WinUSB already, You have to revert to original driver. ( WinUSB driver is required by [toio.js](https://github.com/toio/toio.js/))
+If you had replaced the bluetooth driver to WinUSB already, You have to revert to original driver. (WinUSB is required by [toio.js](https://github.com/toio/toio.js/))
 
 
 ## Reference
