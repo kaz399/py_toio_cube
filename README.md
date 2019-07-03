@@ -5,7 +5,10 @@ Access test to toio core cube with python3 on Windows
 This sample code uses [bleak](https://pypi.org/project/bleak/).
 
 
-## Quick Start
+## Getting Started
+
+
+### How to run
 
 ```
 pip install bleak
@@ -13,7 +16,6 @@ git clone https://github.com/kaz399/py_toio_cube.git
 cd py_toio_cube
 python search_cube.py
 ```
-
 
 ## Notice
 
@@ -25,3 +27,8 @@ If you had replaced the bluetooth driver to WinUSB already, You have to revert t
 ## Reference
 
 [toio Core Cube Specification](https://toio.github.io/toio-spec/)
+
+
+## License
+
+3-Clause BSD License
