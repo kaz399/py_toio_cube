@@ -15,6 +15,7 @@ import sys
 import asyncio
 from bleak import discover
 from bleak import BleakClient
+from bleak import exc
 
 TOIO_SERVICE_UUID = "10B20100-5B3B-4571-9508-CF3EFCD7BBAE".lower()
 TOIO_BATTERY_UUID = "10B20108-5B3B-4571-9508-CF3EFCD7BBAE".lower()
@@ -31,6 +32,7 @@ async def sound(cube):
     sound.append(0xff)
     await cube.write_gatt_char(TOIO_SOUND_UUID, sound)
 
+
 async def motor(cube):
     motor = bytearray()
     motor.append(0x02)
@@ -43,16 +45,20 @@ async def motor(cube):
     motor.append(0x40)
     await cube.write_gatt_char(TOIO_MOTOR_UUID, motor)
 
+
 async def search_cube(loop):
     devices = await discover(timeout=2.0)
     for d in devices:
         try:
-            async with BleakClient(d.address, loop=loop) as client:
-                services = await client.get_services()
-                connected = await client.is_connected()
-                cube = services.services.get(TOIO_SERVICE_UUID)
-                if cube is not None:
-                    cubes.append(client)
+            async with BleakClient(d.address, loop=loop) as cube:
+                connected = await cube.is_connected()
+                if not connected:
+                    print('%s is not connected' % d.address)
+                    continue
+                services = await cube.get_services()
+                is_toio_cube = services.services.get(TOIO_SERVICE_UUID)
+                if is_toio_cube is not None:
+                    cubes.append(cube)
                     print('toio core cube(%d): %s' % (len(cubes), connected))
                     print('  Address: ', d.address)
                     for service in services:
@@ -60,11 +66,13 @@ async def search_cube(loop):
                         print('  UUID   : ', service.uuid)
                         for char in service.characteristics:
                             print('    Characteristic: ', char)
-                    await sound(client)
-                    await motor(client)
-        except Exception as e:
+                    await sound(cube)
+                    await motor(cube)
+        except exc.BleakError as e:
             print(e)
+        except AttributeError as e:
             pass
+
 
 def main(argv):
     print('search toio core cube')
