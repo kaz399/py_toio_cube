@@ -71,16 +71,19 @@ async def get_connection(device, loop):
     cube = BleakClient(address, loop)
     while result is not True:
         try:
-            print("connect to", device)
+            print('connect to', device)
             result = await cube.connect()
+            if result is True:
+                print('success')
         except exc.BleakError as e:
             result = await cube.is_connected()
             if result is True:
-                print('connected')
+                print('connected', result)
             else:
                 print(e)
-                print('try again')
+                print('try again', result)
                 time.sleep(0.5)
+    time.sleep(1)
 
     connected = await cube.is_connected()
     if not connected:
