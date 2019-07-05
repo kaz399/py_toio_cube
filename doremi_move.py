@@ -25,13 +25,16 @@ TOIO_SOUND_UUID = "10B20104-5B3B-4571-9508-CF3EFCD7BBAE".lower()
 TOIO_MOTOR_UUID = "10B20102-5B3B-4571-9508-CF3EFCD7BBAE".lower()
 
 
+address_list_demo_cube = ["EA:BE:D7:F2:D1:87", "C9:A5:04:18:EC:5B"]
+
+
 async def sound(cube, tone):
     sound = bytearray()
     sound.append(0x03)
     sound.append(0x01)
     sound.append(0x01)
     sound.append(40)
-    sound.append(55 + tone)
+    sound.append(tone)
     sound.append(0xff)
     await cube.write_gatt_char(TOIO_SOUND_UUID, sound)
 
@@ -41,92 +44,64 @@ async def motor(cube):
     motor.append(0x02)
     motor.append(0x01)
     motor.append(0x01)
-    motor.append(0x10)
+    motor.append(0x20)
     motor.append(0x02)
     motor.append(0x01)
-    motor.append(0x10)
+    motor.append(0x20)
     motor.append(0x40)
     await cube.write_gatt_char(TOIO_MOTOR_UUID, motor)
 
+doremi = [ 0, 2, 4, 5, 7, 9, 11]
 
-async def move_action(cube_id, cube, tone):
+async def move_action(cube_id, cube):
     for ct in range(8):
-        if ct < 3:
-            tone = ct * 2
-        elif ct < 7:
-            tone = (ct * 2) - 1
-        else:
-            tone = (ct * 2) - 2
-
-        tone += (cube_id * 3)
-
+        tone = 48 + (int(ct / len(doremi)) * 12) + doremi[ct % len(doremi)] + doremi[(cube_id * 2)]
         await sound(cube, tone)
         await motor(cube)
         await asyncio.sleep(1)
 
 
-async def move_pattern1(cube,tone):
-    await sound(cube, tone)
-    await motor(cube)
-    await asyncio.sleep(1)
-
-
 async def get_connection(device, loop):
-    cube = BleakClient(device.address, loop)
-    time.sleep(1)
-    try:
-        result = await cube.connect()
-    except exc.BleakError as e:
-        print(e)
-    except AttributeError as e:
-        pass
+    result = False
+    if isinstance(device, str):
+        address = device
+    else:
+        address = device.address
+
+    cube = BleakClient(address, loop)
+    while result is not True:
+        try:
+            print("connect to", device)
+            result = await cube.connect()
+        except exc.BleakError as e:
+            result = await cube.is_connected()
+            if result is True:
+                print('connected')
+            else:
+                print(e)
+                print('try again')
+                time.sleep(0.5)
 
     connected = await cube.is_connected()
     if not connected:
-        print('%s is not connected' % device.address)
+        print('%s is not connected' % address)
         return None
-    print('connect to:', device.address, cube, result)
+    print('connect to:', address, cube, result)
     return cube
 
 
-async def connect_and_move(device, loop):
-    try:
-        async with BleakClient(device.address, loop=loop) as cube:
-            time.sleep(1)
-            connected = await cube.is_connected()
-            if not connected:
-                print('%s is not connected' % device.address)
-                return
-            else:
-                time.sleep(1)
-            print('get service list')
-            services = await cube.get_services()
-            is_toio_cube = services.services.get(TOIO_SERVICE_UUID)
-            if is_toio_cube is not None:
-                cubes.append(cube)
-                print('toio core cube(%d): %s' % (len(cubes), connected))
-                print('  Address: ', device.address)
-                for service in services:
-                    print('  Service: ', service)
-                    print('  UUID   : ', service.uuid)
-                    for char in service.characteristics:
-                        print('    Characteristic: ', char)
-                for tone in range(10):
-                    await move_pattern1(cube, tone)
-    except exc.BleakError as e:
-        print(e)
-    except AttributeError as e:
-        pass
-
-
 async def search_and_move(loop):
-    devices = await discover(timeout=2.0)
+    #devices = await discover(timeout=1.0)
+    devices = address_list_demo_cube 
     cube_commands = []
     for btdev in devices:
         cube = await get_connection(btdev, loop)
         if cube is not None:
-            cube_commands.append(move_action(len(cube_commands), cube, loop))
+            cube_commands.append(move_action(len(cube_commands), cube))
+    time.sleep(1)
+    print("start")
     await asyncio.gather(*cube_commands)
+    print("end")
 
 
 def main(argv):
