@@ -13,7 +13,7 @@
 
 import sys
 import asyncio
-from bleak import discover
+from bleak import BleakScanner
 from bleak import BleakClient
 from bleak import exc
 
@@ -45,43 +45,45 @@ async def motor(cube):
     motor.append(0x40)
     await cube.write_gatt_char(TOIO_MOTOR_UUID, motor)
 
+async def connect_to_cube(d):
+    print('try to connect %s' % d.address)
+    async with BleakClient(d.address) as cube:
+        connected = cube.is_connected
+        if not connected:
+            print('%s is not connected' % d.address)
+            return
+        print('%s connected' % d.address)
+        services = cube.services
+        for service in services:
+            print(service.uuid)
+            if service.uuid == TOIO_SERVICE_UUID:
+                cubes.append(cube)
+                print('toio core cube(%d): %s' % (len(cubes), connected))
+                print('  Address: ', d.address)
+                for char in service.characteristics:
+                    print('    Characteristic: ', char)
+                await sound(cube)
+                await motor(cube)
 
-async def search_cube(loop):
-    devices = await discover(timeout=2.0)
-    for d in devices:
+async def search_cube():
+    devices = await BleakScanner.discover(timeout=5.0)
+    for i, d in enumerate(devices):
+        print('device %d' % i)
         try:
-            async with BleakClient(d.address, loop=loop) as cube:
-                connected = await cube.is_connected()
-                if not connected:
-                    print('%s is not connected' % d.address)
-                    continue
-                services = await cube.get_services()
-                is_toio_cube = services.services.get(TOIO_SERVICE_UUID)
-                if is_toio_cube is not None:
-                    cubes.append(cube)
-                    print('toio core cube(%d): %s' % (len(cubes), connected))
-                    print('  Address: ', d.address)
-                    for service in services:
-                        print('  Service: ', service)
-                        print('  UUID   : ', service.uuid)
-                        for char in service.characteristics:
-                            print('    Characteristic: ', char)
-                    await sound(cube)
-                    await motor(cube)
+            await connect_to_cube(d)
         except exc.BleakError as e:
             print(e)
         except AttributeError as e:
             pass
 
 
-def main(argv):
+async def main(argv):
     print('search toio core cube')
-    loop = asyncio.get_event_loop()
-    loop.run_until_complete(search_cube(loop))
+    await search_cube()
     if len(cubes) == 0:
         print('sorry, no cubes are found')
     return 0
 
 
 if __name__ == '__main__':
-    sys.exit(main(sys.argv))
+    asyncio.run(main(sys.argv))

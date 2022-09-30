@@ -14,7 +14,8 @@
 import sys
 import asyncio
 import time
-from bleak import discover
+from concurrent.futures import ThreadPoolExecutor
+from bleak import BleakScanner
 from bleak import BleakClient
 from bleak import exc
 
@@ -25,8 +26,8 @@ TOIO_SOUND_UUID = "10B20104-5B3B-4571-9508-CF3EFCD7BBAE".lower()
 TOIO_MOTOR_UUID = "10B20102-5B3B-4571-9508-CF3EFCD7BBAE".lower()
 
 
-address_list_demo_cube = ["EA:BE:D7:F2:D1:87", "C9:A5:04:18:EC:5B"]
-
+#address_list_demo_cube = ["EA:BE:D7:F2:D1:87", "C9:A5:04:18:EC:5B"]
+address_list_demo_cube = ["ED:3E:5F:CB:7F:89"]
 
 async def sound(cube, tone):
     sound = bytearray()
@@ -61,14 +62,14 @@ async def move_action(cube_id, cube):
         await asyncio.sleep(1)
 
 
-async def get_connection(device, loop):
+async def get_connection(device):
     result = False
     if isinstance(device, str):
         address = device
     else:
         address = device.address
 
-    cube = BleakClient(address, loop)
+    cube = BleakClient(address)
     while result is not True:
         try:
             print('connect to', device)
@@ -85,20 +86,19 @@ async def get_connection(device, loop):
                 time.sleep(0.5)
     time.sleep(1)
 
-    connected = await cube.is_connected()
-    if not connected:
+    if not cube.is_connected:
         print('%s is not connected' % address)
         return None
     print('connect to:', address, cube, result)
     return cube
 
 
-async def search_and_move(loop):
-    #devices = await discover(timeout=1.0)
-    devices = address_list_demo_cube 
+async def search_and_move():
+    devices = await BleakScanner.discover(timeout=3.0)
+    #devices = address_list_demo_cube
     cube_commands = []
     for btdev in devices:
-        cube = await get_connection(btdev, loop)
+        cube = await get_connection(btdev)
         if cube is not None:
             cube_commands.append(move_action(len(cube_commands), cube))
     time.sleep(1)
@@ -107,12 +107,11 @@ async def search_and_move(loop):
     print("end")
 
 
-def main(argv):
+async def main(argv):
     print('search toio core cube')
-    loop = asyncio.get_event_loop()
-    loop.run_until_complete(search_and_move(loop))
+    await search_and_move()
     return 0
 
 
 if __name__ == '__main__':
-    sys.exit(main(sys.argv))
+    sys.exit(asyncio.run(main(sys.argv)))
